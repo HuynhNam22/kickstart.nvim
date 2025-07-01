@@ -180,8 +180,11 @@ vim.o.confirm = true
 -- Prevent auto-folding everything onload
 -- vim.o.foldenable = true
 
--- Enable clangd language server
-vim.lsp.enable('clangd')
+-- Enable language server
+vim.lsp.enable 'clangd'
+vim.lsp.enable 'pyright'
+vim.lsp.enable 'jdtls'
+vim.lsp.enable 'bashls'
 
 -- [[ Basic Keymaps ]]
 -- See `:help vim.keymap.set()`
@@ -193,8 +196,10 @@ vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 -- Diagnostic keymaps
 -- Open diagnostics in a new window below
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
--- Open diagnostics in a popup 
-vim.keymap.set('n', 'gl', function() vim.diagnostic.open_float() end, {desc = 'Open Diagnostic in Float'})
+-- Open diagnostics in a popup
+vim.keymap.set('n', 'gl', function()
+  vim.diagnostic.open_float()
+end, { desc = 'Open Diagnostic in Float' })
 
 -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
 -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
@@ -231,14 +236,12 @@ vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper win
 -- Highlight when yanking (copying) text
 -- Try it with `yap` in normal mode
 -- See `:help vim.hl.on_yank()`
-vim.api.nvim_create_autocmd(
-  'TextYankPost',
-  {
-    desc = 'Highlight when yanking (copying) text',
-    group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
-    callback = function()
-      vim.hl.on_yank()
-    end,
+vim.api.nvim_create_autocmd('TextYankPost', {
+  desc = 'Highlight when yanking (copying) text',
+  group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
+  callback = function()
+    vim.hl.on_yank()
+  end,
 })
 
 -- Tree-sitter based folding
@@ -246,7 +249,7 @@ vim.api.nvim_create_autocmd(
 --   'FileType',
 --   {
 --     callback = function()
-      -- check if treesitter has parser 
+-- check if treesitter has parser
 --       if require("nvim-treesitter.parsers").has_parser() then
 --         vim.wo.foldmethod = 'expr'
 --         vim.wo.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
@@ -733,7 +736,19 @@ require('lazy').setup({
             },
           },
         },
+
+        -- A language server for bash
+        bashls = {},
+
+        -- Understands C++ code and adds smart features to editor: code completion, compile errors,
+        --  go-to-definition and more.
         clangd = {},
+
+        -- A static type checker and language server for python
+        pyright = {},
+
+        -- Java language server
+        jdtls = {},
       }
 
       -- Ensure the servers and tools above are installed
@@ -752,6 +767,8 @@ require('lazy').setup({
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
+        'black',
+        'google-java-format',
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -788,25 +805,26 @@ require('lazy').setup({
     },
     opts = {
       notify_on_error = false,
-      format_on_save = function(bufnr)
-        -- Disable "format_on_save lsp_fallback" for languages that don't
-        -- have a well standardized coding style. You can add additional
-        -- languages here or re-enable it for the disabled ones.
-        local disable_filetypes = { c = true, cpp = true }
-        if disable_filetypes[vim.bo[bufnr].filetype] then
-          return nil
-        else
-          return {
-            timeout_ms = 500,
-            lsp_format = 'fallback',
-          }
-        end
-      end,
+      -- format_on_save = function(bufnr)
+      --   -- Disable "format_on_save lsp_fallback" for languages that don't
+      --   -- have a well standardized coding style. You can add additional
+      --   -- languages here or re-enable it for the disabled ones.
+      --   local disable_filetypes = { c = true, cpp = true }
+      --   if disable_filetypes[vim.bo[bufnr].filetype] then
+      --     return nil
+      --   else
+      --     return {
+      --       timeout_ms = 500,
+      --       lsp_format = 'fallback',
+      --     }
+      --   end
+      -- end,
       formatters_by_ft = {
         lua = { 'stylua' },
         -- Conform can also run multiple formatters sequentially
-        -- python = { "isort", "black" },
+        python = { 'black' },
         --
+        java = { 'google-java-format' },
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
       },
@@ -922,15 +940,15 @@ require('lazy').setup({
     config = function()
       ---@diagnostic disable-next-line: missing-fields
       require('tokyonight').setup {
-        style = "night",
+        style = 'night',
         transparent = true, -- Enable this to disable setting the background color
         styles = {
           comments = { italic = false }, -- Disable italics in comments
         },
         -- on_colors = function(colors)
-          -- colors.hint = colors.orange
-          -- colors.error = "#ff0000"
-          -- colors.comment = colors.blue0
+        -- colors.hint = colors.orange
+        -- colors.error = "#ff0000"
+        -- colors.comment = colors.blue0
         -- end
       }
 
@@ -947,8 +965,8 @@ require('lazy').setup({
     event = 'VimEnter',
     dependencies = { 'nvim-lua/plenary.nvim' },
     opts = {
-      signs = false
-    }
+      signs = false,
+    },
   },
 
   { -- Collection of various small independent plugins/modules
@@ -961,7 +979,7 @@ require('lazy').setup({
       --  - yinq - [Y]ank [I]nside [N]ext [Q]uote
       --  - ci'  - [C]hange [I]nside [']quote
       require('mini.ai').setup {
-        n_lines = 500
+        n_lines = 500,
       }
 
       -- Add/delete/replace surroundings (brackets, quotes, etc.)
@@ -976,8 +994,8 @@ require('lazy').setup({
       --  and try some other statusline plugin
       -- local statusline = require 'mini.statusline'
       -- set use_icons to true if you have a Nerd Font
-      -- statusline.setup { 
-      --   use_icons = vim.g.have_nerd_font 
+      -- statusline.setup {
+      --   use_icons = vim.g.have_nerd_font
       -- }
 
       -- You can configure sections in the statusline by overriding their
@@ -985,13 +1003,13 @@ require('lazy').setup({
       -- cursor location to LINE:COLUMN
       ---@diagnostic disable-next-line: duplicate-set-field
       -- statusline.section_location = function(args)
-      --   return '%2l:%-2v' 
+      --   return '%2l:%-2v'
 
-        -- Use virtual column number to allow update when past last column
-        -- if MiniStatusline.is_truncated(args.trunc_width) then return '%2l│%-2v' end
+      -- Use virtual column number to allow update when past last column
+      -- if MiniStatusline.is_truncated(args.trunc_width) then return '%2l│%-2v' end
 
-        -- Use `virtcol()` to correctly handle multi-byte characters
-        -- return '%l/%L│%2v/%-2{virtcol("$") - 1}'
+      -- Use `virtcol()` to correctly handle multi-byte characters
+      -- return '%l/%L│%2v/%-2{virtcol("$") - 1}'
       -- end
       --
       -- ... and there is more!
@@ -1005,8 +1023,29 @@ require('lazy').setup({
     main = 'nvim-treesitter.configs', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc',
-                           'cmake', 'cpp', 'css', 'dockerfile', 'java', 'javascript', 'json', 'make', 'sql', 'xml' },
+      ensure_installed = {
+        'bash',
+        'c',
+        'diff',
+        'html',
+        'lua',
+        'luadoc',
+        'markdown',
+        'markdown_inline',
+        'query',
+        'vim',
+        'vimdoc',
+        'cmake',
+        'cpp',
+        'css',
+        'dockerfile',
+        'java',
+        'javascript',
+        'json',
+        'make',
+        'sql',
+        'xml',
+      },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
@@ -1022,10 +1061,10 @@ require('lazy').setup({
       incremental_selection = {
         enable = true,
         keymaps = {
-          init_selection = "<Enter>", -- "gnn", -- set to `false` to disable one of the mappings
-          node_incremental = "<Enter>", -- "grn",
+          init_selection = '<Enter>', -- "gnn", -- set to `false` to disable one of the mappings
+          node_incremental = '<Enter>', -- "grn",
           scope_incremental = false, -- "grc",
-          node_decremental = "<Backspace>", -- "grm",
+          node_decremental = '<Backspace>', -- "grm",
         },
       },
     },
@@ -1064,9 +1103,7 @@ require('lazy').setup({
   -- Or use telescope!
   -- In normal mode type `<space>sh` then write `lazy.nvim-plugin`
   -- you can continue same window with `<space>sr` which resumes last telescope search
-},
-
-{
+}, {
   ui = {
     -- If you are using a Nerd Font: set icons to an empty table which will use the
     -- default lazy.nvim defined Nerd Font icons, otherwise define a unicode icons table
